@@ -149,6 +149,19 @@ def calculate_salary(request):
         deductions = round(lop_days * daily_rate, 2)
         net_salary = round(max(base_salary - deductions, 0.0), 2)
 
+        existing_paid_salary = EmployeeSalary.objects.filter(
+            tenant_id=tenant_id,
+            employee_id=curr_emp_id,
+            month=month,
+            year=year,
+            status='Paid',
+        ).first()
+
+        if existing_paid_salary:
+            serializer = EmployeeSalarySerializer(existing_paid_salary)
+            results.append(serializer.data)
+            continue
+
         # 6. Save or update the record in the database
         salary_record, created = EmployeeSalary.objects.update_or_create(
             tenant_id=tenant_id,
@@ -180,13 +193,14 @@ def calculate_salary(request):
 def salary_list(request):
     """
     List calculated salaries.
-    Supports filtering by tenant_id, employee_id, month, year.
+    Supports filtering by tenant_id, employee_id, month, year, status.
     """
     queryset = EmployeeSalary.objects.all()
     tenant_id = request.query_params.get('tenant_id')
     employee_id = request.query_params.get('employee_id')
     month = request.query_params.get('month')
     year = request.query_params.get('year')
+    salary_status = request.query_params.get('status')
 
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
@@ -196,6 +210,8 @@ def salary_list(request):
         queryset = queryset.filter(month=month)
     if year:
         queryset = queryset.filter(year=year)
+    if salary_status:
+        queryset = queryset.filter(status=salary_status)
 
     serializer = EmployeeSalarySerializer(queryset, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -216,6 +232,31 @@ def pay_salary(request, pk):
     serializer = EmployeeSalarySerializer(salary_record)
     return Response({
         "Message": "Salary marked as Paid successfully",
+        "data": serializer.data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+def cancel_salary(request, pk):
+    """
+    Mark a calculated salary as Cancelled.
+    """
+    try:
+        salary_record = EmployeeSalary.objects.get(id=pk)
+    except EmployeeSalary.DoesNotExist:
+        return Response({"error": "Salary record not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if salary_record.status == 'Paid':
+        return Response(
+            {"error": "Paid salary records cannot be cancelled"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    salary_record.status = 'Cancelled'
+    salary_record.save()
+    serializer = EmployeeSalarySerializer(salary_record)
+    return Response({
+        "Message": "Salary cancelled successfully",
         "data": serializer.data
     }, status=status.HTTP_200_OK)
 
