@@ -1,0 +1,7 @@
+Django==6.0.2
+djangorestframework==3.16.1
+psycopg2-binary==2.9.11
+python-dotenv==1.2.2
+django-cors-headers==4.9.0
+requests==2.34.0
+
