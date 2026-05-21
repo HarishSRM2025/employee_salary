@@ -71,7 +71,7 @@ WSGI_APPLICATION = 'salary_management.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-db_url = os.getenv('DB_URL')
+db_url = os.getenv('DATABASE_URL') or os.getenv('DB_URL')
 if db_url:
     parsed_url = urlparse(db_url)
     DATABASES = {
