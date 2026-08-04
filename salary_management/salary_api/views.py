@@ -102,6 +102,25 @@ def calculate_salary(request):
         curr_emp_id = employee.get('employee_id')
         curr_emp_name = employee.get('employee_name')
         base_salary = employee.get('employee_salary', 0.0)
+        joined_at_raw = employee.get('created_at') or employee.get('createdAt')
+        join_month_start = None
+        if joined_at_raw:
+            try:
+                joined_at = datetime.fromisoformat(str(joined_at_raw).replace('Z', '+00:00'))
+                join_month_start = date(joined_at.year, joined_at.month, 1)
+            except (ValueError, TypeError):
+                join_month_start = None
+
+        if join_month_start and month_start < join_month_start:
+            existing_record = EmployeeSalary.objects.filter(
+                tenant_id=tenant_id,
+                employee_id=curr_emp_id,
+                month=month,
+                year=year,
+            ).first()
+            if existing_record:
+                existing_record.delete()
+            continue
 
         # Count worked days (Present status in the target month/year)
         worked_days = 0
